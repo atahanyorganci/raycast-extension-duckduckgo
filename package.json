@@ -9,10 +9,11 @@
 	"icon": "duckduckgo.png",
 	"commands": [
 		{
-			"name": "hello",
-			"title": "Hello World",
-			"description": "Run Hello World command",
-			"mode": "no-view"
+			"name": "index",
+			"title": "Search DuckDuckGo",
+			"description": "Search DuckDuckGo with suggestions and bangs.",
+			"icon": "duckduckgo.png",
+			"mode": "view"
 		}
 	],
 	"scripts": {
@@ -26,7 +27,8 @@
 	},
 	"dependencies": {
 		"@raycast/api": "^1.100.2",
-		"@raycast/utils": "^1.17.0"
+		"@raycast/utils": "^1.17.0",
+		"nanoid": "^5.1.5"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^4.16.1",
