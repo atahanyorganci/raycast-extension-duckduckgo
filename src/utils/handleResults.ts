@@ -1,4 +1,4 @@
-import type { Preferences, SearchResult } from "./types";
+import type { SearchResult } from "./types";
 import { getPreferenceValues, LocalStorage } from "@raycast/api";
 import { nanoid } from "nanoid";
 
@@ -33,8 +33,7 @@ const BANGS: Record<string, { name: string; url: string }> = {
 };
 
 export async function getSearchHistory(): Promise<SearchResult[]> {
-	const { rememberSearchHistory } = getPreferenceValues<Preferences>();
-
+	const { rememberSearchHistory } = getPreferenceValues<ExtensionPreferences>();
 	if (!rememberSearchHistory) {
 		return [];
 	}

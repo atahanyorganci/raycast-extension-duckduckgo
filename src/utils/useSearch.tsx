@@ -1,11 +1,11 @@
-import type { Preferences, SearchResult } from "./types";
+import type { SearchResult } from "./types";
 import { getPreferenceValues, LocalStorage, showToast, Toast } from "@raycast/api";
 import { useEffect, useRef, useState } from "react";
 import { getAutoSearchResults, getSearchHistory, getStaticResult } from "./handleResults";
 import { HISTORY_KEY } from "./types";
 
 export function useSearch() {
-	const { rememberSearchHistory } = getPreferenceValues<Preferences>();
+	const { rememberSearchHistory } = getPreferenceValues<ExtensionPreferences>();
 	const [isLoading, setIsLoading] = useState(true);
 	const [history, setHistory] = useState<SearchResult[]>([]);
 	const [staticResults, setStaticResults] = useState<SearchResult[]>([]);
