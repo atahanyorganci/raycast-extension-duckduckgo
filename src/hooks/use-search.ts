@@ -1,7 +1,9 @@
+import type { UseQueryResult } from "@tanstack/react-query";
 import type { SearchQuery } from "../lib/search.js";
 import { getPreferenceValues, showToast, Toast } from "@raycast/api";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { nanoid } from "nanoid";
 import { useEffect } from "react";
 import { deleteHistory, getHistory, persistHistory } from "../lib/history.js";
 import { fetchSearchSuggestions, getSearchQuery } from "../lib/search.js";
@@ -56,19 +58,40 @@ export function useAddHistory() {
 	});
 }
 
-export function useSearch(query: string) {
+function tryGetSearchQueryFromUrl(query: string): SearchQuery | null {
+	try {
+		const url = new URL(query);
+		return {
+			id: nanoid(),
+			query: url.hostname,
+			description: query,
+			url,
+		};
+	}
+	catch {
+		return null;
+	}
+}
+
+export function useSearch(query: string): UseQueryResult<SearchQuery[]> {
 	const history = useHistory();
 	return useQuery({
 		queryKey: ["search", query],
 		queryFn: async ({ signal }) => {
+			const url = tryGetSearchQueryFromUrl(query);
 			const staticResult = getSearchQuery(query);
+
 			const lowerSearchText = query.toLowerCase();
 			const historyResults = history.filter(item => item.query.toLowerCase().includes(lowerSearchText));
 			const autoSearchResults = await fetchSearchSuggestions(query, signal);
 
 			const results = [staticResult, ...historyResults, ...autoSearchResults];
 			// Deduplicate results
-			return results.filter((item, index, self) => self.findIndex(t => t.query === item.query) === index);
+			const deduped = results.filter((item, index, self) => self.findIndex(t => t.query === item.query) === index);
+			if (url) {
+				deduped.unshift(url);
+			}
+			return deduped;
 		},
 		enabled: !!query,
 	});
