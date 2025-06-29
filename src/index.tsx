@@ -21,9 +21,9 @@ const SearchList: FC = () => {
 						title={item.query}
 						subtitle={item.description}
 						icon={
-							item.url.split("/")[2] === "duckduckgo.com"
+							item.url.hostname === "duckduckgo.com"
 								? { source: Icon.MagnifyingGlass }
-								: getFavicon(`https://${item.url.split("/")[2]}`)
+								: getFavicon(item.url)
 						}
 						actions={(
 							<ActionPanel>
@@ -32,13 +32,13 @@ const SearchList: FC = () => {
 										title="Open in Browser"
 										onAction={async () => {
 											await addHistory(item);
-											await open(item.url);
+											await open(item.url.toString());
 											await closeMainWindow();
 										}}
 										icon={{ source: Icon.ArrowRight }}
 									/>
 
-									<Action.CopyToClipboard title="Copy URL to Clipboard" content={item.url} />
+									<Action.CopyToClipboard title="Copy URL to Clipboard" content={item.url.toString()} />
 									<Action.CopyToClipboard title="Copy Suggestion to Clipboard" content={item.query} />
 								</ActionPanel.Section>
 
