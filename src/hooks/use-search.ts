@@ -1,12 +1,12 @@
-import type { SearchResult } from "./types.js";
-import { getPreferenceValues, LocalStorage, showToast, Toast } from "@raycast/api";
+import type { SearchQuery } from "../lib/search.js";
+import { getPreferenceValues, showToast, Toast } from "@raycast/api";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
-import { getAutoSearchResults, getSearchHistory, getStaticResult } from "./handleResults.js";
-import { HISTORY_KEY } from "./types.js";
+import { deleteHistory, getHistory, persistHistory } from "../lib/history.js";
+import { fetchSearchSuggestions, getSearchQuery } from "../lib/search.js";
 
-const $history = atom<SearchResult[]>([]);
+const $history = atom<SearchQuery[]>([]);
 
 export function useHistory() {
 	return useAtomValue($history);
@@ -15,7 +15,7 @@ export function useHistory() {
 export function useHistoryEffect() {
 	const setHistory = useSetAtom($history);
 	useEffect(() => {
-		getSearchHistory().then(history => setHistory(history));
+		getHistory().then(history => setHistory(history));
 	}, []);
 }
 
@@ -23,7 +23,7 @@ export function useDeleteHistory() {
 	const setHistory = useSetAtom($history);
 	return useMutation({
 		mutationFn: async () => {
-			await LocalStorage.removeItem(HISTORY_KEY);
+			await deleteHistory();
 			setHistory([]);
 			showToast(Toast.Style.Success, "Cleared search history");
 		},
@@ -33,9 +33,9 @@ export function useDeleteHistory() {
 export function useDeleteHistoryItem() {
 	const [history, setHistory] = useAtom($history);
 	return useMutation({
-		mutationFn: async ({ id }: SearchResult) => {
+		mutationFn: async ({ id }: SearchQuery) => {
 			const newHistory = history.filter(item => item.id !== id);
-			await LocalStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+			await persistHistory(newHistory);
 			setHistory(newHistory);
 			showToast(Toast.Style.Success, "Removed from history");
 		},
@@ -45,31 +45,31 @@ export function useDeleteHistoryItem() {
 export function useAddHistory() {
 	const [history, setHistory] = useAtom($history);
 	return useMutation({
-		mutationFn: async (result: SearchResult) => {
+		mutationFn: async (result: SearchQuery) => {
 			const newHistory = [result, ...history];
 			setHistory(newHistory);
 			const { rememberSearchHistory } = getPreferenceValues<ExtensionPreferences>();
 			if (rememberSearchHistory) {
-				await LocalStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+				await persistHistory(newHistory);
 			}
 		},
 	});
 }
 
-export function useResults(searchText: string) {
+export function useSearch(query: string) {
 	const history = useHistory();
 	return useQuery({
-		queryKey: ["results", searchText],
+		queryKey: ["search", query],
 		queryFn: async ({ signal }) => {
-			const staticResult = getStaticResult(searchText);
-			const lowerSearchText = searchText.toLowerCase();
+			const staticResult = getSearchQuery(query);
+			const lowerSearchText = query.toLowerCase();
 			const historyResults = history.filter(item => item.query.toLowerCase().includes(lowerSearchText));
-			const autoSearchResults = await getAutoSearchResults(searchText, signal);
+			const autoSearchResults = await fetchSearchSuggestions(query, signal);
 
 			const results = [staticResult, ...historyResults, ...autoSearchResults];
 			// Deduplicate results
 			return results.filter((item, index, self) => self.findIndex(t => t.query === item.query) === index);
 		},
-		enabled: !!searchText,
+		enabled: !!query,
 	});
 }

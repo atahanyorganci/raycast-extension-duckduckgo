@@ -1,9 +1,17 @@
-import type { SearchResult } from "./types.js";
-import { getPreferenceValues, LocalStorage } from "@raycast/api";
 import { nanoid } from "nanoid";
-import z from "zod";
+import { z } from "zod";
 import bangs from "./bangs.json" with { type: "json" };
-import { HISTORY_KEY, SearchResultSchema } from "./types.js";
+
+export const SearchQuerySchema = z.object({
+	id: z.string(),
+	description: z.string().optional(),
+	query: z.string(),
+	url: z.string().transform(url => new URL(url)),
+	isNavigation: z.boolean().optional(),
+	isHistory: z.boolean().optional(),
+});
+
+export type SearchQuery = z.infer<typeof SearchQuerySchema>;
 
 export interface SearchEngine {
 	/**
@@ -38,27 +46,11 @@ export interface SearchEngine {
 
 const BANGS: Record<string, SearchEngine> = bangs;
 
-export function getSearchUrl(url: string, searchQuery: string): URL {
+function getSearchUrl(url: string, searchQuery: string): URL {
 	return new URL(url.replace("{{{s}}}", searchQuery));
 }
 
-export async function getSearchHistory(): Promise<SearchResult[]> {
-	const { rememberSearchHistory } = getPreferenceValues<ExtensionPreferences>();
-	if (!rememberSearchHistory) {
-		return [];
-	}
-	const historyString = await LocalStorage.getItem(HISTORY_KEY);
-	if (typeof historyString !== "string") {
-		return [];
-	}
-	const result = SearchResultSchema.array().safeParse(JSON.parse(historyString));
-	if (!result.success) {
-		return [];
-	}
-	return result.data;
-}
-
-export function getStaticResult(searchText: string): SearchResult {
+export function getSearchQuery(searchText: string): SearchQuery {
 	if (!searchText) {
 		throw new Error("Search text is required");
 	}
@@ -100,11 +92,11 @@ export function getStaticResult(searchText: string): SearchResult {
 	};
 }
 
-const AutoSearchResultSchema = z.object({
+const SearchSuggestionSchema = z.object({
 	phrase: z.string(),
 });
 
-export async function getAutoSearchResults(searchText: string, signal: AbortSignal): Promise<SearchResult[]> {
+export async function fetchSearchSuggestions(searchText: string, signal: AbortSignal): Promise<SearchQuery[]> {
 	const url = new URL("https://duckduckgo.com/ac/");
 	url.searchParams.set("q", searchText);
 
@@ -119,10 +111,10 @@ export async function getAutoSearchResults(searchText: string, signal: AbortSign
 	}
 
 	const json = await response.json();
-	const result = AutoSearchResultSchema.array().safeParse(json);
+	const result = SearchSuggestionSchema.array().safeParse(json);
 
 	if (!result.success) {
 		return [];
 	}
-	return result.data.map(item => getStaticResult(item.phrase));
+	return result.data.map(item => getSearchQuery(item.phrase));
 }

@@ -3,14 +3,15 @@ import { Action, ActionPanel, Alert, closeMainWindow, confirmAlert, Icon, List, 
 import { getFavicon } from "@raycast/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { useAddHistory, useDeleteHistory, useDeleteHistoryItem, useResults } from "./utils/useSearch.js";
+import { useAddHistory, useDeleteHistory, useDeleteHistoryItem, useHistoryEffect, useSearch } from "./hooks/use-search.js";
 
 const SearchList: FC = () => {
+	useHistoryEffect();
 	const { mutateAsync: addHistory } = useAddHistory();
 	const { mutateAsync: deleteHistoryItem } = useDeleteHistoryItem();
 	const { mutateAsync: deleteAllHistory } = useDeleteHistory();
 	const [searchText, setSearchText] = useState("");
-	const { data: results, isLoading, isSuccess } = useResults(searchText);
+	const { data: results, isLoading, isSuccess } = useSearch(searchText);
 
 	return (
 		<List isLoading={isLoading} onSearchTextChange={text => setSearchText(text)} searchBarPlaceholder="Search DuckDuckGo or enter a URL...">
