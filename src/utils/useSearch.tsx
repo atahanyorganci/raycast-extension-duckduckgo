@@ -1,5 +1,5 @@
 import type { SearchResult } from "./types.js";
-import { LocalStorage, showToast, Toast } from "@raycast/api";
+import { getPreferenceValues, LocalStorage, showToast, Toast } from "@raycast/api";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
@@ -46,7 +46,12 @@ export function useAddHistory() {
 	const [history, setHistory] = useAtom($history);
 	return useMutation({
 		mutationFn: async (result: SearchResult) => {
-			setHistory([result, ...history]);
+			const newHistory = [result, ...history];
+			setHistory(newHistory);
+			const { rememberSearchHistory } = getPreferenceValues<ExtensionPreferences>();
+			if (rememberSearchHistory) {
+				await LocalStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+			}
 		},
 	});
 }
