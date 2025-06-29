@@ -38,7 +38,8 @@
 	"dependencies": {
 		"@raycast/api": "^1.100.2",
 		"@raycast/utils": "^1.17.0",
-		"nanoid": "^5.1.5"
+		"nanoid": "^5.1.5",
+		"zod": "^3.25.67"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^4.16.1",

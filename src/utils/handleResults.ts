@@ -1,6 +1,8 @@
 import type { SearchResult } from "./types";
 import { getPreferenceValues, LocalStorage } from "@raycast/api";
 import { nanoid } from "nanoid";
+import z from "zod";
+import { HISTORY_KEY, SearchResultSchema } from "./types";
 
 const BANGS: Record<string, { name: string; url: string }> = {
 	g: { name: "Google", url: "https://google.com/search?q=" },
@@ -37,116 +39,84 @@ export async function getSearchHistory(): Promise<SearchResult[]> {
 	if (!rememberSearchHistory) {
 		return [];
 	}
-
-	const historyString = (await LocalStorage.getItem("history")) as string;
-
-	if (historyString === undefined) {
+	const historyString = await LocalStorage.getItem(HISTORY_KEY);
+	if (typeof historyString !== "string") {
 		return [];
 	}
-
-	const items: SearchResult[] = JSON.parse(historyString);
-	return items;
+	const result = SearchResultSchema.array().safeParse(JSON.parse(historyString));
+	if (!result.success) {
+		return [];
+	}
+	return result.data;
 }
 
-export function getStaticResult(searchText: string): SearchResult[] {
+export function getStaticResult(searchText: string): SearchResult {
 	if (!searchText) {
-		return [];
+		throw new Error("Search text is required");
 	}
 
-	let description = ""; // Default description if no prefix is found
-	let url = ""; // Default URL if no prefix is found
-	let bang = "";
-	if (searchText.startsWith("!")) {
-		const parts = searchText.split(" ");
-		bang = parts[0].substring(1); // remove the "!" prefix from the bang
-		if (parts.length === 1 || parts[1] === "") {
-			// Only "!*" or "!* "
-			if (bang in BANGS) {
-				description = `Go to ${BANGS[bang].name} (open '${BANGS[bang].url
-					.split("/")[2]
-					.replace("www.", "")}' in Browser)`;
-				url = "https://" + `${BANGS[bang].url.split("/")[2]}`;
+	const match = searchText.match(/^!(\w+)(?:\s(.*))?$/);
+	if (match) {
+		const bang = match[1];
+		const searchQuery = match[2] || "";
+
+		if (bang in BANGS) {
+			if (searchQuery) {
+				return {
+					id: nanoid(),
+					query: searchText,
+					description: `Search ${BANGS[bang].name} for '${searchQuery}'`,
+					url: `${BANGS[bang].url}${encodeURIComponent(searchQuery)}`,
+				};
 			}
+			const url = new URL(BANGS[bang].url);
+			const hostname = url.hostname.replace("www.", "");
+			return {
+				id: nanoid(),
+				query: bang,
+				description: `Go to ${BANGS[bang].name} (open ${hostname} in new tab)`,
+				url: BANGS[bang].url,
+			};
 		}
-		else {
-			// "!* search_query"
-			const searchQuery = parts.slice(1).join(" ");
-			if (bang in BANGS) {
-				description = `Search ${BANGS[bang].name} for '${searchQuery}'`;
-				url = `${BANGS[bang].url}${encodeURIComponent(searchQuery)}`;
-			}
-		}
-	}
 
-	if (!url) {
-		description = `Search DuckDuckGo for '${searchText}'`; // Default description if no prefix is found
-		url = `https://duckduckgo.com/?q=${encodeURIComponent(searchText)}`;
-	}
-
-	const result: SearchResult[] = [
-		{
+		return {
 			id: nanoid(),
-			query: searchText,
-			description,
-			url,
-		},
-	];
-
-	return result;
+			query: searchQuery,
+			description: `Search DuckDuckGo for '${searchText}'`,
+			url: `https://duckduckgo.com/?q=${encodeURIComponent(searchText)}`,
+		};
+	}
+	return {
+		id: nanoid(),
+		query: searchText,
+		description: `Search DuckDuckGo for '${searchText}'`,
+		url: `https://duckduckgo.com/?q=${encodeURIComponent(searchText)}`,
+	};
 }
 
-export async function getAutoSearchResults(searchText: string, signal: any): Promise<SearchResult[]> {
-	const response = await fetch(`https://duckduckgo.com/ac/?q=${encodeURIComponent(searchText)}`, {
-		method: "get",
+const AutoSearchResultSchema = z.object({
+	phrase: z.string(),
+});
+
+export async function getAutoSearchResults(searchText: string, signal: AbortSignal): Promise<SearchResult[]> {
+	const url = new URL("https://duckduckgo.com/ac/");
+	url.searchParams.set("q", searchText);
+
+	const response = await fetch(url, {
 		signal,
 		headers: {
 			"Content-Type": "application/json; charset=UTF-8",
 		},
 	});
-
 	if (!response.ok) {
 		return Promise.reject(response.statusText);
 	}
 
-	const json = (await response.json()) as Array<any>;
+	const json = await response.json();
+	const result = AutoSearchResultSchema.array().safeParse(json);
 
-	const results: SearchResult[] = [];
-
-	(json as Array<any>).map((item: any) => {
-		let bang = "";
-		const searchText = item.phrase;
-
-		if (searchText.substring(0, 1) === "!") {
-			if (
-				searchText.substring(1, searchText.length).length > 2
-				&& searchText.substring(1, searchText.length).split(" ")[0] in BANGS
-			) {
-				bang = searchText.substring(1, searchText.indexOf(" "));
-				results.push({
-					id: nanoid(),
-					query: item.phrase,
-					description: `Search ${BANGS[bang].name} for '${searchText.substring(searchText.indexOf(" ") + 1)}'`,
-					url: `${BANGS[bang].url}${encodeURIComponent(searchText.substring(searchText.indexOf(" ") + 1))}`,
-				});
-			}
-			else {
-				results.push({
-					id: nanoid(),
-					query: item.phrase,
-					description: `Search DuckDuckGo for '${searchText}'`, // Default description if no prefix is found
-					url: `https://duckduckgo.com/?q=${encodeURIComponent(searchText)}`,
-				});
-			}
-		}
-		else {
-			results.push({
-				id: nanoid(),
-				query: item.phrase,
-				description: `Search DuckDuckGo for '${searchText}'`, // Default description if no prefix is found
-				url: `https://duckduckgo.com/?q=${encodeURIComponent(searchText)}`,
-			});
-		}
-	});
-
-	return results;
+	if (!result.success) {
+		return [];
+	}
+	return result.data.map(item => getStaticResult(item.phrase));
 }

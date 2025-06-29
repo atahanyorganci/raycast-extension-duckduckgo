@@ -25,7 +25,10 @@ export function useSearch() {
 
 	// Static result and filter history
 	useEffect(() => {
-		setStaticResults(getStaticResult(searchText));
+		if (searchText.length > 0) {
+			const staticResult = getStaticResult(searchText);
+			setStaticResults([staticResult]);
+		}
 	}, [searchText]);
 
 	// Static result and filter history
