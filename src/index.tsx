@@ -1,14 +1,21 @@
+import type { FC } from "react";
 import { Action, ActionPanel, Alert, closeMainWindow, confirmAlert, Icon, List, open } from "@raycast/api";
 import { getFavicon } from "@raycast/utils";
-import { useSearch } from "./utils/useSearch";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { useAddHistory, useDeleteHistory, useDeleteHistoryItem, useResults } from "./utils/useSearch";
 
-export default function Command() {
-	const { isLoading, results, search, addHistory, deleteAllHistory, deleteHistoryItem } = useSearch();
+const SearchList: FC = () => {
+	const { mutateAsync: addHistory } = useAddHistory();
+	const { mutateAsync: deleteHistoryItem } = useDeleteHistoryItem();
+	const { mutateAsync: deleteAllHistory } = useDeleteHistory();
+	const [searchText, setSearchText] = useState("");
+	const { data: results, isLoading, isSuccess } = useResults(searchText);
 
 	return (
-		<List isLoading={isLoading} onSearchTextChange={search} searchBarPlaceholder="Search DuckDuckGo or enter a URL...">
-			<List.Section title="Results" subtitle={`${results.length}`}>
-				{results.map(item => (
+		<List isLoading={isLoading} onSearchTextChange={text => setSearchText(text)} searchBarPlaceholder="Search DuckDuckGo or enter a URL...">
+			<List.Section title="Results" subtitle={isSuccess ? `${results?.length}` : undefined}>
+				{results?.map(item => (
 					<List.Item
 						key={item.id}
 						title={item.query}
@@ -76,4 +83,16 @@ export default function Command() {
 			</List.Section>
 		</List>
 	);
-}
+};
+
+const queryClient = new QueryClient();
+
+const Command: FC = () => {
+	return (
+		<QueryClientProvider client={queryClient}>
+			<SearchList />
+		</QueryClientProvider>
+	);
+};
+
+export default Command;

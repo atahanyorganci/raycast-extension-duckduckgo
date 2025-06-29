@@ -1,149 +1,70 @@
 import type { SearchResult } from "./types";
-import { getPreferenceValues, LocalStorage, showToast, Toast } from "@raycast/api";
-import { useEffect, useRef, useState } from "react";
+import { LocalStorage, showToast, Toast } from "@raycast/api";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useEffect } from "react";
 import { getAutoSearchResults, getSearchHistory, getStaticResult } from "./handleResults";
 import { HISTORY_KEY } from "./types";
 
-export function useSearch() {
-	const { rememberSearchHistory } = getPreferenceValues<ExtensionPreferences>();
-	const [isLoading, setIsLoading] = useState(true);
-	const [history, setHistory] = useState<SearchResult[]>([]);
-	const [staticResults, setStaticResults] = useState<SearchResult[]>([]);
-	const [historyResults, setHistoryResults] = useState<SearchResult[]>([]);
-	const [autoResults, setAutoResults] = useState<SearchResult[]>([]);
-	const [results, setResults] = useState<SearchResult[]>([]);
-	const [searchText, setSearchText] = useState("");
-	const cancelRef = useRef<AbortController | null>(null);
+const $history = atom<SearchResult[]>([]);
 
+export function useHistory() {
+	return useAtomValue($history);
+}
+
+export function useHistoryEffect() {
+	const setHistory = useSetAtom($history);
 	useEffect(() => {
-		getHistory();
-
-		return () => {
-			cancelRef.current?.abort();
-		};
+		getSearchHistory().then(history => setHistory(history));
 	}, []);
+}
 
-	// Static result and filter history
-	useEffect(() => {
-		if (searchText.length > 0) {
-			const staticResult = getStaticResult(searchText);
-			setStaticResults([staticResult]);
-		}
-	}, [searchText]);
+export function useDeleteHistory() {
+	const setHistory = useSetAtom($history);
+	return useMutation({
+		mutationFn: async () => {
+			await LocalStorage.removeItem(HISTORY_KEY);
+			setHistory([]);
+			showToast(Toast.Style.Success, "Cleared search history");
+		},
+	});
+}
 
-	// Static result and filter history
-	useEffect(() => {
-		const lowerSearchText = searchText.toLowerCase();
-		setHistoryResults(history.filter(item => item.query.toLowerCase().includes(lowerSearchText)));
-	}, [searchText, history]);
-
-	// Autosuggestions
-	useEffect(() => {
-		const fetchQuery = async () => {
-			cancelRef.current?.abort();
-			cancelRef.current = new AbortController();
-
-			try {
-				if (searchText) {
-					setIsLoading(true);
-					const autoSearchResult = await getAutoSearchResults(searchText, cancelRef.current.signal);
-					setAutoResults(autoSearchResult);
-				}
-				else {
-					setAutoResults([]);
-				}
-			}
-			catch (error) {
-				if (searchText.substring(0, 1) !== "!") {
-					if (error instanceof Error && error.name === "AbortError") {
-						return;
-					}
-
-					console.error("Search error", error);
-					showToast(Toast.Style.Failure, "Could not perform search", String(error));
-				}
-			}
-		};
-
-		fetchQuery();
-	}, [searchText]);
-
-	// Combine all results
-	useEffect(() => {
-		const combinedResults = [...staticResults, ...historyResults, ...autoResults].filter(
-			(value, index, self) => index === self.findIndex(t => t.id === value.id),
-		);
-		if (
-			autoResults.length > 0
-			|| /^https?:\/\/[\w-]+(\.[\w-]+)+\/?$/.test(staticResults[0] ? staticResults[0].url : "")
-			|| searchText.trim() === ""
-			|| searchText === "!"
-		) {
-			setIsLoading(false);
-		}
-		setResults(combinedResults);
-	}, [staticResults, historyResults, autoResults]);
-
-	async function getHistory() {
-		const newHistory = await getSearchHistory();
-		setIsLoading(false);
-		setHistory(newHistory);
-	}
-
-	async function addHistory(result: SearchResult) {
-		const newHistory = [...history];
-
-		if (newHistory.some(item => item.query === result.query)) {
-			return;
-		}
-
-		newHistory?.unshift({
-			...result,
-			isHistory: true,
-		});
-
-		setHistory(newHistory);
-
-		if (rememberSearchHistory) {
+export function useDeleteHistoryItem() {
+	const [history, setHistory] = useAtom($history);
+	return useMutation({
+		mutationFn: async ({ id }: SearchResult) => {
+			const newHistory = history.filter(item => item.id !== id);
 			await LocalStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
-		}
-	}
+			setHistory(newHistory);
+			showToast(Toast.Style.Success, "Removed from history");
+		},
+	});
+}
 
-	async function deleteAllHistory() {
-		await LocalStorage.removeItem(HISTORY_KEY);
+export function useAddHistory() {
+	const [history, setHistory] = useAtom($history);
+	return useMutation({
+		mutationFn: async (result: SearchResult) => {
+			setHistory([result, ...history]);
+		},
+	});
+}
 
-		setHistory([]);
-		showToast(Toast.Style.Success, "Cleared search history");
-	}
+export function useResults(searchText: string) {
+	const history = useHistory();
+	return useQuery({
+		queryKey: ["results", searchText],
+		queryFn: async ({ signal }) => {
+			const staticResult = getStaticResult(searchText);
+			const lowerSearchText = searchText.toLowerCase();
+			const historyResults = history.filter(item => item.query.toLowerCase().includes(lowerSearchText));
+			const autoSearchResults = await getAutoSearchResults(searchText, signal);
 
-	async function deleteHistoryItem(result: SearchResult) {
-		const newHistory = [...history];
-		const index = newHistory.findIndex(item => item.query === result.query);
-
-		if (index < 0) {
-			return;
-		}
-
-		newHistory?.splice(index, 1);
-
-		await LocalStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
-
-		setHistory(newHistory);
-		showToast(Toast.Style.Success, "Removed from history");
-	}
-
-	async function search(query: string) {
-		setSearchText(query);
-	}
-
-	return {
-		isLoading,
-		results,
-		searchText,
-		search,
-		history,
-		addHistory,
-		deleteAllHistory,
-		deleteHistoryItem,
-	};
+			const results = [staticResult, ...historyResults, ...autoSearchResults];
+			// Deduplicate results
+			return results.filter((item, index, self) => self.findIndex(t => t.query === item.query) === index);
+		},
+		enabled: !!searchText,
+	});
 }
