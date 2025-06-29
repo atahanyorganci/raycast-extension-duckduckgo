@@ -1,10 +1,10 @@
-import type { SearchResult } from "./types";
+import type { SearchResult } from "./types.js";
 import { LocalStorage, showToast, Toast } from "@raycast/api";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
-import { getAutoSearchResults, getSearchHistory, getStaticResult } from "./handleResults";
-import { HISTORY_KEY } from "./types";
+import { getAutoSearchResults, getSearchHistory, getStaticResult } from "./handleResults.js";
+import { HISTORY_KEY } from "./types.js";
 
 const $history = atom<SearchResult[]>([]);
 

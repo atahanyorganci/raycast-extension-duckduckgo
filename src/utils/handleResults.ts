@@ -1,8 +1,8 @@
-import type { SearchResult } from "./types";
+import type { SearchResult } from "./types.js";
 import { getPreferenceValues, LocalStorage } from "@raycast/api";
 import { nanoid } from "nanoid";
 import z from "zod";
-import { HISTORY_KEY, SearchResultSchema } from "./types";
+import { HISTORY_KEY, SearchResultSchema } from "./types.js";
 
 const BANGS: Record<string, { name: string; url: string }> = {
 	g: { name: "Google", url: "https://google.com/search?q=" },

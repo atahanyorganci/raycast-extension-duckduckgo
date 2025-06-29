@@ -3,7 +3,7 @@ import { Action, ActionPanel, Alert, closeMainWindow, confirmAlert, Icon, List, 
 import { getFavicon } from "@raycast/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { useAddHistory, useDeleteHistory, useDeleteHistoryItem, useResults } from "./utils/useSearch";
+import { useAddHistory, useDeleteHistory, useDeleteHistoryItem, useResults } from "./utils/useSearch.js";
 
 const SearchList: FC = () => {
 	const { mutateAsync: addHistory } = useAddHistory();
