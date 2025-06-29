@@ -1,0 +1,41 @@
+{
+	"$schema": "https://www.raycast.com/schemas/extension.json",
+	"name": "raycast-extension-duckduckgo",
+	"title": "DuckDuckGo",
+	"packageManager": "pnpm@10.12.1+sha512.f0dda8580f0ee9481c5c79a1d927b9164f2c478e90992ad268bbb2465a736984391d6333d2c327913578b2804af33474ca554ba29c04a8b13060a717675ae3ac",
+	"description": "Search DuckDuckGo with suggestions and bangs",
+	"author": "atahanyorganci",
+	"license": "MIT",
+	"icon": "duckduckgo.png",
+	"commands": [
+		{
+			"name": "hello",
+			"title": "Hello World",
+			"description": "Run Hello World command",
+			"mode": "no-view"
+		}
+	],
+	"scripts": {
+		"build": "ray build",
+		"check": "tsc",
+		"check:watch": "tsc --watch",
+		"dev": "ray develop",
+		"lint": "eslint .",
+		"lint:fix": "eslint --fix .",
+		"publish": "pnpm dlx @raycast/api@latest publish"
+	},
+	"dependencies": {
+		"@raycast/api": "^1.100.2",
+		"@raycast/utils": "^1.17.0"
+	},
+	"devDependencies": {
+		"@antfu/eslint-config": "^4.16.1",
+		"@raycast/eslint-config": "^2.0.4",
+		"@types/node": "22.13.10",
+		"@types/react": "19.0.10",
+		"eslint": "^9.30.0",
+		"eslint-plugin-format": "^1.0.1",
+		"jiti": "^2.4.2",
+		"typescript": "^5.8.2"
+	}
+}
