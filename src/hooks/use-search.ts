@@ -59,18 +59,25 @@ export function useAddHistory() {
 }
 
 function tryGetSearchQueryFromUrl(query: string): SearchQuery | null {
+	let url: URL;
 	try {
-		const url = new URL(query);
-		return {
-			id: nanoid(),
-			query: url.hostname,
-			description: query,
-			url,
-		};
+		// If the query is localhost, add a protocol
+		if (query.startsWith("localhost")) {
+			url = new URL(`http://${query}`);
+		}
+		else {
+			url = new URL(query);
+		}
 	}
 	catch {
 		return null;
 	}
+	return {
+		id: nanoid(),
+		query: url.hostname,
+		description: query,
+		url,
+	};
 }
 
 export function useSearch(query: string): UseQueryResult<SearchQuery[]> {
