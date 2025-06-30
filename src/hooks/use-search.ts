@@ -65,6 +65,9 @@ function tryGetSearchQueryFromUrl(query: string): SearchQuery | null {
 		if (query.startsWith("localhost")) {
 			url = new URL(`http://${query}`);
 		}
+		else if (query.match(/^([a-z0-9]+\.)+[a-z]{2,}/i)) {
+			url = new URL(`https://${query}`);
+		}
 		else {
 			url = new URL(query);
 		}
