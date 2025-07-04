@@ -13,7 +13,7 @@ export async function queryHistory(query: string): Promise<SearchQuery[]> {
 			return or(
 				like(fields.title, `%${query}%`),
 				like(fields.description, `%${query}%`),
-				like(fields.url, `%${query}%`)
+				like(fields.url, `%${query}%`),
 			);
 		},
 	});

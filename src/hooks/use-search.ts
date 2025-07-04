@@ -2,8 +2,8 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import type { SearchQuery } from "../lib/search.js";
 import { useQuery } from "@tanstack/react-query";
 import { nanoid } from "nanoid";
-import { fetchSearchSuggestions, getSearchQuery } from "../lib/search.js";
 import { queryHistory } from "../lib/history.js";
+import { fetchSearchSuggestions, getSearchQuery } from "../lib/search.js";
 
 function tryGetSearchQueryFromUrl(query: string): SearchQuery | null {
 	let url: URL;
@@ -36,9 +36,9 @@ export function useSearch(query: string): UseQueryResult<SearchQuery[]> {
 		queryFn: async ({ signal }) => {
 			const url = tryGetSearchQueryFromUrl(query);
 			const staticResult = getSearchQuery(query);
-			const [autoSearchResults, historyResults] =await Promise.all([
+			const [autoSearchResults, historyResults] = await Promise.all([
 				fetchSearchSuggestions(query, signal),
-				queryHistory(query)
+				queryHistory(query),
 			]);
 
 			const results = [staticResult, ...historyResults, ...autoSearchResults];
