@@ -1,29 +1,27 @@
 import type { SearchQuery } from "./search.js";
-import { getPreferenceValues, LocalStorage } from "@raycast/api";
-import { SearchQuerySchema } from "./search.js";
+import { nanoid } from "nanoid";
+import { getDatabase } from "../db/index.js";
 
-const HISTORY_KEY = "history";
-
-export async function getHistory(): Promise<SearchQuery[]> {
-	const { rememberSearchHistory } = getPreferenceValues<ExtensionPreferences>();
-	if (!rememberSearchHistory) {
-		return [];
-	}
-	const historyString = await LocalStorage.getItem(HISTORY_KEY);
-	if (typeof historyString !== "string") {
-		return [];
-	}
-	const result = SearchQuerySchema.array().safeParse(JSON.parse(historyString));
-	if (!result.success) {
-		return [];
-	}
-	return result.data;
-}
-
-export async function deleteHistory(): Promise<void> {
-	await LocalStorage.removeItem(HISTORY_KEY);
-}
-
-export async function persistHistory(newHistory: SearchQuery[]) {
-	await LocalStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+export async function queryHistory(query: string): Promise<SearchQuery[]> {
+	const db = await getDatabase();
+	const visits = await db.query.mozPlaces.findMany({
+		limit: 10,
+		orderBy({ frecency }, { desc }) {
+			return desc(frecency);
+		},
+		where(fields, { like, or }) {
+			return or(
+				like(fields.title, `%${query}%`),
+				like(fields.description, `%${query}%`),
+				like(fields.url, `%${query}%`)
+			);
+		},
+	});
+	return visits.map(({ url, title, description }) => ({
+		id: nanoid(),
+		description: description ?? undefined,
+		query: title ?? "",
+		url: new URL(url ?? ""),
+		isHistory: true,
+	}));
 }
