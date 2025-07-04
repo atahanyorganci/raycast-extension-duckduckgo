@@ -7,4 +7,5 @@ export default antfu({
 		semi: true,
 		indent: "tab",
 	},
+	ignores: ["./src/lib/bangs.json"],
 });
