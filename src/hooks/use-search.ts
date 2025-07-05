@@ -1,5 +1,7 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { SearchQuery } from "../lib/search.js";
+import { Icon } from "@raycast/api";
+import { getFavicon } from "@raycast/utils";
 import { useQuery } from "@tanstack/react-query";
 import { nanoid } from "nanoid";
 import { queryHistory } from "../lib/history.js";
@@ -24,9 +26,12 @@ function tryGetSearchQueryFromUrl(query: string): SearchQuery | null {
 	}
 	return {
 		id: nanoid(),
-		query: url.hostname,
+		title: url.hostname,
 		description: query,
 		url,
+		icon: getFavicon(url, {
+			fallback: Icon.Globe,
+		}),
 	};
 }
 
@@ -43,7 +48,7 @@ export function useSearch(query: string): UseQueryResult<SearchQuery[]> {
 
 			const results = [staticResult, ...historyResults, ...autoSearchResults];
 			// Deduplicate results
-			const deduped = results.filter((item, index, self) => self.findIndex(t => t.query === item.query) === index);
+			const deduped = results.filter((item, index, self) => self.findIndex(t => t.title === item.title) === index);
 			if (url) {
 				deduped.unshift(url);
 			}

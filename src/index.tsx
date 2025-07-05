@@ -1,6 +1,5 @@
 import type { FC } from "react";
 import { Action, ActionPanel, closeMainWindow, Icon, List, open } from "@raycast/api";
-import { getFavicon } from "@raycast/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useSearch } from "./hooks/use-search.js";
@@ -12,30 +11,26 @@ const SearchList: FC = () => {
 	return (
 		<List isLoading={isLoading} onSearchTextChange={text => setSearchText(text)} searchBarPlaceholder="Search DuckDuckGo or enter a URL...">
 			<List.Section title="Results" subtitle={isSuccess ? `${results?.length}` : undefined}>
-				{results?.map(item => (
+				{results?.map(({ id, title, description, icon, url }) => (
 					<List.Item
-						key={item.id}
-						title={item.query}
-						subtitle={item.description}
-						icon={
-							item.url.hostname === "duckduckgo.com"
-								? { source: Icon.MagnifyingGlass }
-								: getFavicon(item.url)
-						}
+						key={id}
+						title={title}
+						subtitle={description}
+						icon={icon}
 						actions={(
 							<ActionPanel>
 								<ActionPanel.Section title="Result">
 									<Action
 										title="Open in Browser"
 										onAction={async () => {
-											await open(item.url.toString());
+											await open(url.toString());
 											await closeMainWindow();
 										}}
 										icon={{ source: Icon.ArrowRight }}
 									/>
 
-									<Action.CopyToClipboard title="Copy URL to Clipboard" content={item.url.toString()} />
-									<Action.CopyToClipboard title="Copy Suggestion to Clipboard" content={item.query} />
+									<Action.CopyToClipboard title="Copy URL to Clipboard" content={url.toString()} />
+									<Action.CopyToClipboard title="Copy Suggestion to Clipboard" content={title} />
 								</ActionPanel.Section>
 							</ActionPanel>
 						)}

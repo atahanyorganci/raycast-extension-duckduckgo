@@ -1,17 +1,17 @@
+import type { Image } from "@raycast/api";
+import { Icon } from "@raycast/api";
+import { getFavicon } from "@raycast/utils";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import bangs from "./bangs.json" with { type: "json" };
 
-export const SearchQuerySchema = z.object({
-	id: z.string(),
-	description: z.string().optional(),
-	query: z.string(),
-	url: z.string().transform(url => new URL(url)),
-	isNavigation: z.boolean().optional(),
-	isHistory: z.boolean().optional(),
-});
-
-export type SearchQuery = z.infer<typeof SearchQuerySchema>;
+export interface SearchQuery {
+	id: string;
+	title: string;
+	description?: string;
+	url: URL;
+	icon: Image.ImageLike;
+}
 
 export interface SearchEngine {
 	/**
@@ -64,31 +64,43 @@ export function getSearchQuery(searchText: string): SearchQuery {
 			if (searchQuery) {
 				return {
 					id: nanoid(),
-					query: searchText,
+					title: searchText,
 					description: `Search ${BANGS[bang].summary} for '${searchQuery}'`,
 					url: getSearchUrl(BANGS[bang].url, searchQuery),
+					icon: getFavicon(BANGS[bang].url, {
+						fallback: Icon.MagnifyingGlass,
+					}),
 				};
 			}
 			return {
 				id: nanoid(),
-				query: bang,
+				title: bang,
 				description: `Go to ${BANGS[bang].summary} (open ${BANGS[bang].domain} in new tab)`,
 				url: getSearchUrl(BANGS[bang].url, searchQuery),
+				icon: getFavicon(BANGS[bang].url, {
+					fallback: Icon.Globe,
+				}),
 			};
 		}
 
 		return {
 			id: nanoid(),
-			query: searchQuery,
+			title: searchQuery,
 			description: `Search DuckDuckGo for '${searchText}'`,
 			url: new URL(`https://duckduckgo.com/?q=${encodeURIComponent(searchText)}`),
+			icon: getFavicon("https://duckduckgo.com", {
+				fallback: Icon.MagnifyingGlass,
+			}),
 		};
 	}
 	return {
 		id: nanoid(),
-		query: searchText,
+		title: searchText,
 		description: `Search DuckDuckGo for '${searchText}'`,
 		url: new URL(`https://duckduckgo.com/?q=${encodeURIComponent(searchText)}`),
+		icon: getFavicon("https://duckduckgo.com", {
+			fallback: Icon.MagnifyingGlass,
+		}),
 	};
 }
 
